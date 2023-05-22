@@ -4,10 +4,11 @@ import numpy as np
 
 from birds.models.random_walk import RandomWalk
 from birds.calibrator import Calibrator
+from birds.posterior_estimators import TrainableGaussian
 
 class TestCalibrator:
     @pytest.mark.parametrize("diff_mode", ["forward", "reverse"])
-    def test_random_walk(self, TrainableGaussian, diff_mode):
+    def test_random_walk(self, diff_mode):
         """
         Tests inference in a random walk model.
         """
@@ -15,8 +16,8 @@ class TestCalibrator:
         true_ps = [0.25] #, 0.5, 0.75]
         prior = torch.distributions.Normal(0.0, 1.0)
         for true_p in true_ps:
-            data = rw.observe(rw.run(torch.tensor([true_p])))
-            posterior_estimator = TrainableGaussian(0.5, 0.1)
+            data = rw.run_and_observe(torch.tensor([true_p]))
+            posterior_estimator = TrainableGaussian([0.5], 0.1)
             posterior_estimator.sigma.requires_grad = False
             optimizer = torch.optim.Adam(posterior_estimator.parameters(), lr=1e-2)
             calib = Calibrator(

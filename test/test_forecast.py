@@ -17,8 +17,12 @@ class MockPosteriorEstimator(torch.nn.Module):
         self.p = torch.tensor(1.0, requires_grad=True)
 
     def sample(self, n):
-        x = 2 * self.p * torch.ones((n, 2))
-        return x, self.log_prob(x)
+        x = 2 * self.p * torch.ones((n[0], 2))
+        return x
+
+    def rsample(self, n):
+        x = 2 * self.p * torch.ones((n[0], 2))
+        return x
 
     def log_prob(self, x):
         if len(x.shape) == 1:
@@ -28,6 +32,9 @@ class MockPosteriorEstimator(torch.nn.Module):
 
     def forward(self, n):
         return self.sample(n)
+
+    def __call__(self, x=None):
+        return self
 
 
 class MockModel(Model):

@@ -60,7 +60,7 @@ class Calibrator:
         gradient_horizon: int = 0,
         device: str = "cpu",
         progress_bar: bool = True,
-        progress_info: bool = False,
+        progress_info: bool = True,
         log_tensorboard: bool = False,
         tensorboard_log_dir: str | None = None,
     ):
@@ -94,11 +94,14 @@ class Calibrator:
         """
         if mpi_rank == 0:
             self.optimizer.zero_grad()
+        # condition the posterior. In the future this will be extended
+        conditional_posterior = self.posterior_estimator()
+
         # compute and differentiate forecast loss
         forecast_loss = compute_and_differentiate_forecast_loss(
             loss_fn=self.forecast_loss,
             model=self.model,
-            posterior_estimator=self.posterior_estimator,
+            posterior_estimator=conditional_posterior,
             n_samples=self.n_samples_per_epoch,
             observed_outputs=self.data,
             diff_mode=self.diff_mode,
@@ -110,7 +113,7 @@ class Calibrator:
         # compute and differentiate regularisation loss
         if mpi_rank == 0:
             regularisation_loss = self.w * compute_regularisation_loss(
-                posterior_estimator=self.posterior_estimator,
+                posterior_estimator=conditional_posterior,
                 prior=self.prior,
                 n_samples=self.n_samples_regularisation,
             )

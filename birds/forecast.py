@@ -90,13 +90,15 @@ def compute_loss(
 def _sample_and_scatter_parameters(
     posterior_estimator: Callable,
     n_samples: int,
+    with_gradient: bool,
 ) -> (torch.Tensor, np.ndarray):
     """Sample parameters and scatter them across devices.
 
     **Arguments:**
 
-    - posterior_estimator : function that generates parameters
-    - n_samples : number of samples to generate
+    - `posterior_estimator` : function that generates parameters
+    - `n_samples` : number of samples to generate
+    - `with_gradient` : whether to sample with gradient or not
 
     **Returns:**
     - If rank 0, returns a tensor of parameters and a numpy array of parameters. The first tensor carries the gradient.
@@ -104,16 +106,18 @@ def _sample_and_scatter_parameters(
     """
     # Rank 0 samples from the flow
     if mpi_rank == 0:
-        params_list, logprobs_list = posterior_estimator.sample(n_samples)
+        if with_gradient:
+            params_list = posterior_estimator.rsample((n_samples,))
+        else:
+            params_list = posterior_estimator.sample((n_samples,))
         params_list_comm = params_list.detach().cpu().numpy()
     else:
         params_list = None
         params_list_comm = None
-        logprobs_list = None
     # scatter the parameters to all ranks
     if mpi_comm is not None:
         params_list_comm = mpi_comm.bcast(params_list_comm, root=0)
-    return params_list, params_list_comm, logprobs_list
+    return params_list, params_list_comm
 
 
 def _differentiate_forecast_loss_pathwise(forecast_parameters, forecast_jacobians):
@@ -174,8 +178,8 @@ def compute_forecast_loss_and_jacobian_pathwise(
     - `device`: device to use for the computation
     """
     # sample parameters and scatter them across devices
-    params_list, params_list_comm, _ = _sample_and_scatter_parameters(
-        posterior_estimator, n_samples
+    params_list, params_list_comm = _sample_and_scatter_parameters(
+        posterior_estimator, n_samples, with_gradient=True
     )
     # select forward or reverse jacobian calculator
     if diff_mode == "reverse":
@@ -261,8 +265,8 @@ def compute_and_differentiate_forecast_loss_score(
     - `device`: device to use for the computation
     """
     # sample parameters and scatter them across devices
-    _, params_list_comm, logprobs_list = _sample_and_scatter_parameters(
-        posterior_estimator, n_samples
+    _, params_list_comm = _sample_and_scatter_parameters(
+        posterior_estimator, n_samples, with_gradient=False
     )
     # make each rank compute the loss for its parameters
     loss_per_parameter = []
@@ -286,14 +290,11 @@ def compute_and_differentiate_forecast_loss_score(
     if mpi_rank == 0:
         loss_per_parameter = list(chain(*loss_per_parameter))
         indices = list(chain(*indices_per_rank))
-        logprobs_list = logprobs_list[indices]
         params_list_comm = params_list_comm[indices]
         to_backprop = 0.0
         total_loss = 0.0
         n_samples_non_nan = 0
-        for param, loss_i, param_logprob in zip(
-            params_list_comm, loss_per_parameter, logprobs_list
-        ):
+        for param, loss_i in zip(params_list_comm, loss_per_parameter):
             loss_i = torch.tensor(loss_i, device=device)
             if np.isnan(loss_i):  # no parameter was non-nan
                 continue
