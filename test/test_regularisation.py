@@ -5,7 +5,7 @@ from birds.posterior_estimators import TrainableGaussian
 
 
 class TestRegularisation:
-    def test_regularisation(self):
+    def test__regularisation(self):
         n_samples = 100000
         # define two normal distributions
         dist1 = TrainableGaussian([0.], 1)
@@ -23,3 +23,4 @@ class TestRegularisation:
             0.5,
             rtol=1e-2,
         )
+

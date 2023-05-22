@@ -29,11 +29,13 @@ def compute_regularisation_loss(posterior_estimator, prior, n_samples):
         ```
     """
     # sample from the posterior
-    z = posterior_estimator.sample((n_samples,)) # important, sample not rsample here.
+    #z = posterior_estimator.sample((n_samples,)) # important, sample not rsample here.
+    z = prior.sample((n_samples,1))
     # compute the log probability of the samples under the posterior
     log_prob_posterior = posterior_estimator.log_prob(z)
     # compute the log probability of the samples under the prior
     log_prob_prior = prior.log_prob(z)
     # compute the Monte Carlo estimate of the KL divergence
-    kl_divergence = (log_prob_posterior - log_prob_prior).mean()
+    #kl_divergence = (log_prob_posterior - log_prob_prior).mean()
+    kl_divergence = (log_prob_prior - log_prob_posterior).mean()
     return kl_divergence

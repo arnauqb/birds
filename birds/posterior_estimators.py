@@ -5,7 +5,8 @@ class TrainableGaussian(torch.nn.Module):
     def __init__(self, mu=[0.0], sigma=1.0):
         super().__init__()
         self.mu = torch.nn.Parameter(torch.tensor(mu))
-        self.sigma = torch.nn.Parameter(sigma * torch.eye(len(mu)))
+        self.sigma = sigma * torch.eye(len(mu))
+        self.sigma = torch.nn.Parameter(self.sigma)
 
     def clamp_sigma(self):
         sigma = self.sigma.clone()

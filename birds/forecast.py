@@ -200,7 +200,7 @@ def compute_forecast_loss_and_jacobian_pathwise(
         chunk_size=jacobian_chunk_size,
     )
     # make each rank compute the loss for its parameters
-    loss = 0
+    loss = 0.0
     jacobians_per_rank = []
     indices_per_rank = []  # need to keep track of which parameter has which jacobian
     for i in range(mpi_rank, len(params_list_comm), mpi_size):
@@ -221,7 +221,10 @@ def compute_forecast_loss_and_jacobian_pathwise(
     if mpi_comm is not None:
         losses = mpi_comm.gather(loss, root=0)
         if mpi_rank == 0:
-            loss = sum([l.cpu() for l in losses if l != 0])
+            loss = sum([l.cpu() for l in losses if l != 0.0])
+            # make loss a tensor in case its a float
+            if type(loss) == int:
+                loss = torch.tensor(loss)
     if mpi_rank == 0:
         jacobians = list(chain(*jacobians_per_rank))
         indices = list(chain(*indices_per_rank))
