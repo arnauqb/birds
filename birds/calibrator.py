@@ -166,7 +166,7 @@ class Calibrator:
                     num_epochs_without_improvement = 0
                 else:
                     num_epochs_without_improvement += 1
-                if self.progress_info:
+                if self.progress_bar and self.progress_info:
                     iterator.set_postfix(
                         {
                             "Forecast": forecast_loss.item(),
